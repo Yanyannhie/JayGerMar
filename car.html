@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Car Rental System - Philippines</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #f5f7fa;
+    margin: 0;
+  }
+  header {
+    background-color: #007bff;
+    color: white;
+    text-align: center;
+    padding: 15px;
+  }
+  .container {
+    max-width: 900px;
+    margin: 30px auto;
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  }
+  input, select, button {
+    padding: 8px;
+    margin: 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  th, td {
+    border: 1px solid #ccc;
+    padding: 10px;
+    text-align: center;
+  }
+  th {
+    background-color: #007bff;
+    color: white;
+  }
+  .logout {
+    background-color: #dc3545;
+    float: right;
+  }
+  .status-pending { color: orange; font-weight: bold; }
+  .status-approved { color: green; font-weight: bold; }
+  .status-rejected { color: red; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🚗 Car Rental System - Philippines</h1>
+</header>
+
+<div class="container">
+
+  <!-- LOGIN -->
+  <div id="loginBox">
+    <h2>Sign In</h2>
+    <input type="text" id="loginUser" placeholder="Username">
+    <input type="password" id="loginPass" placeholder="Password">
+    <select id="loginRole">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select><br>
+    <button onclick="login()">Login</button>
+  </div>
+
+  <!-- USER SIDE -->
+  <div id="userPanel" style="display:none;">
+    <h2>User Panel</h2>
+    <button class="logout" onclick="logout()">Logout</button><br><br>
+
+    <label>Name:</label>
+    <input type="text" id="u_name" placeholder="Full Name">
+    <label>Contact:</label>
+    <input type="text" id="u_contact" placeholder="09XXXXXXXXX"><br>
+    <label>Address:</label>
+    <input type="text" id="u_address" placeholder="City, Province"><br>
+
+    <label>Car Type:</label>
+    <select id="u_car" onchange="updatePrice()">
+      <option value="">--Select Car--</option>
+      <option value="1000">Toyota Vios - ₱1000/day</option>
+      <option value="1500">Honda City - ₱1500/day</option>
+      <option value="2000">Mitsubishi Xpander - ₱2000/day</option>
+      <option value="2500">Toyota Innova - ₱2500/day</option>
+      <option value="3000">Fortuner SUV - ₱3000/day</option>
+    </select>
+
+    <label>Days Rent:</label>
+    <input type="number" id="u_days" min="1" placeholder="Days">
+    <label>Destination:</label>
+    <select id="u_destination">
+      <option value="">--Select Destination--</option>
+      <option value="Metro Manila">Metro Manila</option>
+      <option value="Tagaytay">Tagaytay</option>
+      <option value="Baguio">Baguio</option>
+      <option value="Batangas">Batangas</option>
+      <option value="Ilocos">Ilocos</option>
+    </select>
+    <br>
+    <button onclick="computeTotal()">Compute</button>
+    <input type="text" id="u_total" readonly placeholder="Total ₱">
+    <br><br>
+
+    <button onclick="addRental()">Add</button>
+    <button onclick="editRental()">Edit</button>
+    <button onclick="deleteRental()">Delete</button>
+
+    <h3>My Transactions</h3>
+    <table id="userTable">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Car</th>
+          <th>Days</th>
+          <th>Destination</th>
+          <th>Total</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- ADMIN SIDE -->
+  <div id="adminPanel" style="display:none;">
+    <h2>Admin Dashboard</h2>
+    <button class="logout" onclick="logout()">Logout</button>
+    <h3>All Transactions</h3>
+    <table id="adminTable">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Name</th>
+          <th>Contact</th>
+          <th>Address</th>
+          <th>Car</th>
+          <th>Days</th>
+          <th>Destination</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <h3>Total Approved Income:</h3>
+    <input type="text" id="adminIncome" readonly>
+  </div>
+</div>
+
+<script>
+  const credentials = {
+    admin: { username: "admin", password: "1234" },
+    user: { username: "user", password: "1234" }
+  };
+
+  let rentals = [];
+  let editIndex = -1;
+  let currentUser = "";
+
+  // LOGIN FUNCTION
+  function login() {
+    const u = document.getElementById("loginUser").value;
+    const p = document.getElementById("loginPass").value;
+    const r = document.getElementById("loginRole").value;
+
+    if (r === "admin" && u === credentials.admin.username && p === credentials.admin.password) {
+      currentUser = "admin";
+      showPanel("admin");
+    } else if (r === "user" && u === credentials.user.username && p === credentials.user.password) {
+      currentUser = "user";
+      showPanel("user");
+    } else {
+      alert("Invalid credentials! Try admin/1234 or user/1234");
+    }
+  }
+
+  function showPanel(role) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("userPanel").style.display = role === "user" ? "block" : "none";
+    document.getElementById("adminPanel").style.display = role === "admin" ? "block" : "none";
+    displayTables();
+  }
+
+  function logout() {
+    currentUser = "";
+    document.getElementById("loginBox").style.display = "block";
+    document.getElementById("userPanel").style.display = "none";
+    document.getElementById("adminPanel").style.display = "none";
+  }
+
+  // COMPUTATION
+  function computeTotal() {
+    const price = document.getElementById("u_car").value;
+    const days = document.getElementById("u_days").value;
+    if (price && days) {
+      const total = price * days;
+      document.getElementById("u_total").value = total;
+    } else {
+      alert("Select car and enter days!");
+    }
+  }
+
+  // ADD RENTAL
+  function addRental() {
+    const name = document.getElementById("u_name").value;
+    const contact = document.getElementById("u_contact").value;
+    const address = document.getElementById("u_address").value;
+    const carSel = document.getElementById("u_car");
+    const carText = carSel.options[carSel.selectedIndex].text;
+    const days = document.getElementById("u_days").value;
+    const destination = document.getElementById("u_destination").value;
+    const total = document.getElementById("u_total").value;
+
+    if (!name || !contact || !address || !carSel.value || !days || !destination || !total) {
+      alert("Please fill in all fields!");
+      return;
+    }
+
+    rentals.push({
+      name, contact, address, carText, days, destination, total,
+      status: "Pending"
+    });
+
+    displayTables();
+    clearInputs();
+  }
+
+  // EDIT RENTAL (USER)
+  function editRental() {
+    if (editIndex < 0) {
+      alert("Select a record to edit (click it on the table).");
+      return;
+    }
+    const name = document.getElementById("u_name").value;
+    const contact = document.getElementById("u_contact").value;
+    const address = document.getElementById("u_address").value;
+    const carSel = document.getElementById("u_car");
+    const carText = carSel.options[carSel.selectedIndex].text;
+    const days = document.getElementById("u_days").value;
+    const destination = document.getElementById("u_destination").value;
+    const total = document.getElementById("u_total").value;
+
+    rentals[editIndex] = { ...rentals[editIndex], name, contact, address, carText, days, destination, total };
+    editIndex = -1;
+    displayTables();
+    clearInputs();
+  }
+
+  // DELETE RENTAL
+  function deleteRental() {
+    if (editIndex < 0) {
+      alert("Select a record first!");
+      return;
+    }
+    rentals.splice(editIndex, 1);
+    editIndex = -1;
+    displayTables();
+    clearInputs();
+  }
+
+  // ADMIN APPROVAL
+  function approve(index) {
+    rentals[index].status = "Approved";
+    displayTables();
+  }
+  function reject(index) {
+    rentals[index].status = "Rejected";
+    displayTables();
+  }
+
+  // DISPLAY TABLES
+  function displayTables() {
+    const userTbody = document.querySelector("#userTable tbody");
+    const adminTbody = document.querySelector("#adminTable tbody");
+    userTbody.innerHTML = "";
+    adminTbody.innerHTML = "";
+    let totalIncome = 0;
+
+    rentals.forEach((r, i) => {
+      // USER TABLE
+      const rowU = `<tr onclick="selectRental(${i})">
+        <td>${i + 1}</td><td>${r.carText}</td><td>${r.days}</td>
+        <td>${r.destination}</td><td>₱${r.total}</td>
+        <td class="status-${r.status.toLowerCase()}">${r.status}</td></tr>`;
+      userTbody.innerHTML += rowU;
+
+      // ADMIN TABLE
+      const rowA = `<tr>
+        <td>${i + 1}</td><td>${r.name}</td><td>${r.contact}</td><td>${r.address}</td>
+        <td>${r.carText}</td><td>${r.days}</td><td>${r.destination}</td>
+        <td>₱${r.total}</td>
+        <td class="status-${r.status.toLowerCase()}">${r.status}</td>
+        <td>
+          <button onclick="approve(${i})">Approve</button>
+          <button onclick="reject(${i})">Reject</button>
+        </td></tr>`;
+      adminTbody.innerHTML += rowA;
+
+      if (r.status === "Approved") totalIncome += parseFloat(r.total);
+    });
+
+    document.getElementById("adminIncome").value = "₱" + totalIncome;
+  }
+
+  // SELECT RENTAL
+  function selectRental(index) {
+    editIndex = index;
+    const r = rentals[index];
+    document.getElementById("u_name").value = r.name;
+    document.getElementById("u_contact").value = r.contact;
+    document.getElementById("u_address").value = r.address;
+    document.getElementById("u_days").value = r.days;
+    document.getElementById("u_total").value = r.total;
+  }
+
+  function clearInputs() {
+    document.getElementById("u_name").value = "";
+    document.getElementById("u_contact").value = "";
+    document.getElementById("u_address").value = "";
+    document.getElementById("u_car").selectedIndex = 0;
+    document.getElementById("u_days").value = "";
+    document.getElementById("u_destination").selectedIndex = 0;
+    document.getElementById("u_total").value = "";
+  }
+
+  function updatePrice() {
+    document.getElementById("u_total").value = "";
+  }
+</script>
+
+</body>
+</html>
